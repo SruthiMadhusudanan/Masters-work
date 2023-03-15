@@ -1,0 +1,1662 @@
+---
+title: "ANL501-Data Visualisation and Storytelling" 
+output: word_document
+---
+
+
+
+# Executive Summary
+
+Electronic vehicles (EV) have grown significantly over the last decade, with a steady increase in market share and a recent acceleration in adoption. This expansion has resulted in an increase in demand for cobalt, a key component in EV batteries. Aside from the demand for cobalt, the impact of climate change policies has also contributed to the DRC conflict scenario. Green policies aimed at reducing carbon emissions have resulted in a shift away from fossil-fuel vehicles, increasing demand for EVs. The DRC produces more than 70% of the world's cobalt, and the country's eastern region is particularly rich in cobalt and copper reserves. This, in turn, has created a market for critical minerals like cobalt, leading to competition and conflicts over resources in the DRC.
+
+
+According to Amnesty International, children as young as seven are involved in cobalt mining in the DRC, with an estimated 40,000 children working in mines across the country. Furthermore, cobalt mining in the Democratic Republic of the Congo has had a significant impact on the local environment, resulting in deforestation, water pollution, and soil degradation. This has had a negative impact on the health and livelihoods of local communities, with increased cases of respiratory illnesses, skin diseases, and crop failures reported. Furthermore, the conflicts in the DRC are not solely motivated by a desire for critical minerals. Armed groups such as M23, which has been active in the country since 2012, have also contributed to the region's instability and violence.
+
+
+Our analysis shows that EV growth and conflict in the DRC have increased significantly since the 2010s, with the eastern region of the country bearing the brunt of the brunt. The increase in events and fatalities over the years, as well as the top actors responsible for events, have all been studied. Individual events, such as battles, riots, protests, violence against civilians, explosions, and strategic developments, have also been studied. The common trend that has emerged from our analysis is that the growth of EVs has had a significant impact on conflicts and fatalities in the DRC between 2010 and 2022. Green policies aimed at reducing global carbon emissions have increased demand for cobalt, a critical component in EV batteries, fueling the DRC conflict scenario. The analysis's thesis is that the surge in cobalt demand caused by the growth of EVs, combined with the role of armed groups and MNC exploitation, has contributed to the DRC conflict scenario.
+
+
+In summary, while the implementation of green policies aimed at reducing carbon emissions is a positive step towards mitigating climate change, it has also had unintended consequences in the DRC. The demand for critical minerals like cobalt has fueled conflicts and human rights abuses, while armed groups like M23 have added to the instability and violence in the region. Sustainable practices in the EV industry and ethical sourcing of critical minerals are crucial to mitigate the negative impact of cobalt mining and armed conflicts in the DRC.
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+# set working directory
+setwd("/Users/sruthiajay/Desktop/Sruthi")
+
+#load packages
+library(foreign)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(socviz)
+library(maps)
+library(ggthemes)
+library(ggrepel)
+library(sf)
+library(gridExtra)
+library(plotly)
+library(rgdal)
+library(readxl)
+library(knitr)
+library(htmltools)
+library(leaflet)
+library(ggmap)
+library(broom)
+
+# Read CSV file
+df <- read.csv("ECA_DRC.csv")
+df.ev <- read.csv("EV.csv")
+
+```
+
+# Exploratory Analysis
+
+## Events over years
+
+Lets start by analyzing the number of events over the years.
+
+```{r events_over_years, fig.height=6, fig.width=12}
+
+# Grouping by year and event type
+cf1 = df %>%
+  group_by(year, event_type) %>%
+  summarise(CountYear = n())  %>%
+  arrange(year)
+
+# plotting a bar chart 
+ggplot(cf1, aes(x = year, y = CountYear, fill = event_type)) +
+  geom_bar(stat = 'identity') +
+  ggtitle("Events by Year") +
+  theme_bw() +
+  scale_fill_brewer(palette = "Reds", name = " Events") +
+  labs(
+    x = "Year",
+    y = " Number of events ",
+    title = "Year and Events",
+    subtitle = " Year: 1997-2022",
+    caption = "Source:ACLED_DRC"
+  ) +
+  theme(plot.title = element_text(size = 14,hjust = 0.5),
+        plot.subtitle = element_text(size = 12,hjust = 0.5)) +
+  facet_wrap(~ event_type)  
+
+
+```
+The graph above attempts to analyze the growth of events from 1997 to 2022 and to segment it based on the type of events. Riots and violence against civilians are the most prominent events, while explosions and remote violence are the least prominent.  Riots, protests, and strategic developments are placed together in the middle. One common trend observed across all event types is an increase in the number of events after 2010. After 2010, the number of events increased exponentially, more than 4X times across the board. It will be interesting to see how this increase correlates with the growth of EV over the same time period.
+
+## Events and Fatalities over the years
+
+Following that, we will examine the impact of the events by calculating the number of fatalities caused by these various events. Unlike events, which have steadily increased over the years, fatalities have more of a on and off trend, particularly until 2010. As the chart below shows, fatalities have been steadily increasing since 2010. However, the absolute number of fatalities is lower than between 1997 and 2010. This could be because events are more controlled nowadays, whereas in the late 1990s and early 2000s, most events were uncontrolled.But with fatalities increasing over the years , it may well surpass the peak of 1997-2010.
+
+
+```{r conflicts_and_fatalaties_over_years, fig.height=6, fig.width=10, message=FALSE, warning=FALSE}
+
+# select required columns
+accidents_data <- df[, c("admin1", "fatalities", "year", "event_type")]
+
+# grouping data by year and calculate number of fatalities and number of events
+summarized_data <- accidents_data %>%
+  group_by(year) %>%
+  summarise(total_fatalities = sum(fatalities),
+            total_events = sum(!is.na(event_type)))
+
+# plotting  bar chart and a line chart
+p <- ggplot(summarized_data)  +
+  geom_bar(aes(x = year, y = total_events),
+           stat = "identity",
+           fill = "orange") +
+  geom_line(
+    aes(x = year, y = total_fatalities),
+    stat = "identity",
+    color = "red",
+    size = 0.5
+  ) +
+  labs(title = "Number of Events and Fatalities by Year",
+       x = "Year", y = "Events and Fatalities",caption = "Source:ACLED_DRC") +
+  geom_point(aes(x = year, y = total_events),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+# convert ggplot object to plotly object for interactive visualization
+ggplotly(p, tooltip = c("total_events", "total_fatalities"))
+
+
+```
+
+## Top 10 Locations with most events
+
+Next we move on to see which locations have the most conflicts happening. Top three locations are Goma, Beni and Kinshasa.
+
+```{r top_10_conflicts, fig.height=12, fig.width=20, message=FALSE, warning=FALSE}
+
+# grouping data by location and calculate the  number of fatalities and number of events
+congo <- df %>%
+  group_by(location) %>%
+  summarise(freq = n()) %>%
+  arrange(desc(freq))
+top_10 <- head(congo, 10)
+
+#create bar plot using ggplot
+ggplot(top_10, aes(reorder(location,-freq), freq)) +
+  geom_bar(stat = "identity",
+           fill = "transparent",
+           color = "blue") +
+  labs(
+    x = "Location",
+    y = "Number of Conflicts",
+    title = "Congo's top 10 locations with most events",
+    subtitle = "YEAR= 1997-2022",
+    caption = "Source: ACLED_DRC"
+  ) +
+  theme_bw() + geom_text(
+    aes(label = freq),
+    position = position_stack(vjust = 0.9),
+    color = "black",
+    size = 8
+  )
+
+
+```
+## Administrative regions vs Events and Fatalities
+
+Next we try to analyse the prominent events across different administrative regions and the corresponding fatalities resulted in these regions. Violence against civilians and Battles are the two of the most prominent events resulting in maximum fatalities across all administrative regions in Congo.Other events thought present are less prominent. Another point to note is that, while violence against civilians is the most prevalent across all regions, battles result in the most fatalities, implying the severity of battles. Sud-Kivu, Ituri and Kinshasa are the regions with most events and fatalities.
+
+```{r admin_vs_fatalities,fig.height=4, fig.width=8}
+
+#Subset admin1, fatalities, year, event_type
+accidents_data <-
+  df[, c("admin1", "fatalities", "year", "event_type")]
+
+#plot using ggplot
+ggplot(data = accidents_data) +
+  geom_smooth(mapping = aes(x = admin1, y = fatalities)) +
+  geom_point(
+    mapping = aes(
+      x = admin1,
+      y = fatalities,
+      color = fatalities,
+      fill = event_type,
+      shape = event_type
+    )
+  ) +
+  
+  #Add color scales and axis labels
+  scale_color_continuous(name = "Number of Fatalities") +
+  scale_fill_discrete(name = "Event Type") +
+  scale_shape_discrete(name = "Event Type") +
+  theme(axis.text.x = element_text(angle = 90),
+        plot.title = element_text(size = 14,hjust = 0.5)) +
+  labs(
+    title = "Plot of fatalities vs administrative region",
+    x = "Administrative Region",
+    y = "Number of Fatalities",
+    subtitle = "Year:1997-2022",
+    caption = "Source:ACLED_DRC"
+  )
+
+
+```
+
+## Top 10 Actors - Primary and Secondary
+
+The top three primary actors in the events are unidentified armed groups, military forces, and protesters. In terms of secondary actors, civilians are the most important, followed by military forces, which are a distant second and third. It's worth noting that the top primary actor is an unidentified armed group. That is, we don't really know who this group is made up of or what their agenda is, which is concerning. Other actors include military forces and civilians, which is understandable given that military forces attempt to control events and civilians participate the most in them.
+
+```{r top_10_Actors,fig.height=12, fig.width=12}
+
+
+#Select required columns and group by actor1
+actor1_df <- df[, c("actor1", "event_type")] %>%
+  group_by(actor1) %>%
+#Summarize total number of events and arrange in descending order 
+  summarise(total_events = sum(!is.na(event_type))) %>%
+  arrange(desc(total_events))
+
+#Select the top 10 actors
+top_10 <- head(actor1_df, 10)
+
+#Reorder the actor1 column based on total_events
+top_10$actor1 <- fct_reorder(top_10$actor1,-top_10$total_events)
+
+#Plotting bar plot using ggplot for top 10 primary actors
+ggplot(data = top_10) +
+  geom_bar(aes(x = actor1, y = total_events), stat = "identity") +
+  
+  #Adding x-axis labels
+  scale_x_discrete(
+    labels = function(x)
+      str_wrap(x, width = 20)
+  ) +
+  
+  #Theme and axis label
+  theme(axis.text.x = element_text(angle = 90),
+        plot.title = element_text(size = 14,hjust = 0.5)) +
+  labs(
+    x = "Primary Actors",
+    y = "Total Number of Events",
+    title = "Top 10 Actors Involved in the Event",
+    caption = "Source: ACLED_DRC",
+    subtitle = "Year: 1997-2022"
+  )
+
+```
+
+```{r top_10_Secondary_Actors,fig.height=12, fig.width=12}
+
+#Select required columns and group by actor2
+actor2_df <- df[, c("actor2", "event_type")] %>%
+  filter(!is.na(actor2) & actor2 != "") %>%
+  group_by(actor2) %>%
+  summarise(total_events = sum(!is.na(event_type))) %>%
+  arrange(desc(total_events))
+
+#Select the top 10 secondary actors
+top_10 <- head(actor2_df, 10)
+
+#Reorder the actor2 column based on total_events
+top_10$actor2 <- fct_reorder(top_10$actor2,-top_10$total_events)
+
+#Plotting bar plot using ggplot for top 10 sec actors
+ggplot(data = top_10) +
+  geom_bar(aes(x = actor2, y = total_events), stat = "identity") +
+  
+ #Adding x-axis labels
+  scale_x_discrete(
+    labels = function(x)
+      str_wrap(x, width = 20)
+  ) +
+  
+  #Theme and axis label
+  theme(axis.text.x = element_text(angle = 90),
+        plot.title = element_text(size = 14,hjust = 0.5)) +
+  labs(
+    x = "Secondary Actors",
+    y = "Total Number of Events",
+    title = "Top 10 Secondary Actors Involved in the Event",
+   caption = "Source: ACLED_DRC",
+    subtitle = "Year: 1997-2022"
+  )
+
+```
+Next , we will analyse the individual events in detail to analyse the impact of the events.
+
+## Battles
+
+### Battles and fatalities by year
+
+Here we compare the battles and fatalities across two time periods , 1997-2010 and 2011-2022. In the first period, we dont see much growth in the battles. Similarly , the trend for the fatalities is also up and down. On the other hand,between 2011-2022, we can see multifold increase in both battles and fatalities compared to 1997-2010.
+
+
+```{r battles_fatalities_by_year_97_10,fig.height=12, fig.width=12}
+
+#Subset the data with columns fatalities,year,event_type
+battle1_data <-
+  df[, c("fatalities", "year", "event_type")]
+
+#Filter battles and years between 1997 and 2010
+summarized_data <- battle1_data %>%
+  filter(event_type == "Battles" & year >= 1997 & year <= 2010) %>%
+  group_by(year) %>%
+  
+#Calculating total fatalities and total events
+  summarise(total_fatalities = sum(fatalities),
+            total_events = n())
+
+#Plotting bar and line chart using ggplot for total events and fatalities from 2010-2022
+p <- ggplot(summarized_data) +
+  geom_bar(aes(x = year, y = total_events),
+           stat = "identity",
+           fill = "lightblue") +
+  geom_line(
+    aes(x = year, y = total_fatalities),
+    stat = "identity",
+    color = "cyan",
+    size = 0.5
+  ) +
+  
+  #Adding axis labels and title
+  labs(title = "Number of Battles and Fatalities by Year (1997-2010)",
+       x = "Year", y = "Number of Battles and Fatalities",caption ="Source:ACLED_DRC") +
+  
+  #Adding data points
+  geom_point(aes(x = year, y = total_events),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  
+  #Set the theme to a black and white theme with margins
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+#Convert the chart to an interactive plotly chart with tooltips
+p <-
+  ggplotly(p, tooltip = c("total_events", "total_fatalities"))
+
+# Displaying the plotly chart
+p
+
+```
+
+
+```{r battles_fatalities_by_year_10_22,fig.height=12, fig.width=12}
+
+#Subset the data with columns fatalities,year,event_type
+battle2_data <-
+  df[, c( "fatalities", "year", "event_type")]
+
+#Filter battles and years between 2010 and 2022 and group by year
+summarized_data <- battle2_data %>%
+  filter(event_type == "Battles" & year >= 2010 & year <= 2022) %>%
+  group_by(year) %>%
+#Calculating total fatalities and total events
+  summarise(total_fatalities = sum(fatalities),
+            total_events = n())
+
+#Plotting bar and line chart using ggplot for total events and fatalities from 2010-2022
+p <- ggplot(summarized_data) +
+  geom_bar(aes(x = year, y = total_events),
+           stat = "identity",
+           fill = "lightblue") +
+  geom_line(
+    aes(x = year, y = total_fatalities),
+    stat = "identity",
+    color = "cyan",
+    size = 0.5
+  ) +
+  labs(title = "Number of Battles and Fatalities by Year (2010-2022)",
+       x = "Year", y = "Number of Battles and Fatalities",caption ="Source:ACLED_DRC") +
+  geom_point(aes(x = year, y = total_events),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+#Convert the ggplot object to plotly for interactive visualization
+p <-
+  ggplotly(p, tooltip = c("total_events", "total_fatalities"))
+
+#Displaying the plotly chart
+p
+
+```
+
+### Battle fatalities plotted by regions 
+
+Next up , we will try to plot the battle fatalities across DRC using leaflet. Here , for both time periods, we can see that most of the battles happen in Eastern DRC. During 1997-2010, top regions affected by battles are Bukavi,Bunia,Kikwit and Aamba. For 2011-2022 are Pinga, Kimbumba, Yumbi.
+
+```{r battles_map_97,fig.height=12, fig.width=12}
+
+#Setting the keyword to "Battles"
+keyword = "Battles"
+
+#Select required columns and filter Battles with valid latitudes and longitudes from 2010 and before 
+
+bat_1997 <- df %>%
+  select(event_type, latitude, longitude, fatalities, year, location) %>%
+  filter(!is.na(latitude)) %>%
+  filter(!is.na(longitude)) %>%
+  filter(str_detect(event_type, keyword)) %>%
+  filter(as.integer(year) <= 2010)
+
+#Calculate the median longitude and latitude
+center_lon = median(bat_1997$longitude)
+center_lat = median(bat_1997$latitude)
+
+#Create a leaflet map and add circle markers for each location which is sized based on fatalities 
+leaflet(bat_1997) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    lng = ~ longitude,
+    lat = ~ latitude,
+    radius = ~ (fatalities / 25),
+    color = "green",
+    fillOpacity = 0.5,
+    stroke = FALSE,
+    
+  #Display the region name and number of fatalities on each circle marker
+    popup = ~ paste("Region: ", location, "<br> Fatalities: ", fatalities)
+  ) %>%
+  
+  #Display the map 
+  setView(lng = center_lon, lat = center_lat, zoom = 5)
+
+
+```
+
+
+```{r battles_map_10,fig.height=12, fig.width=12}
+
+#Setting the keyword to "Battles"
+keyword = "Battles"
+
+#Select required columns 
+bat_1997 <- df %>%
+  select(event_type, latitude, longitude, fatalities, year, location) %>%
+  
+#Omit missing latitude or longitude values
+filter(!is.na(latitude)) %>%
+filter(!is.na(longitude)) %>%
+  
+#filter Battles with valid latitudes and longitudes from 2010 to 2022
+filter(str_detect(event_type, keyword)) %>%
+filter(as.integer(year) >= 2010)
+
+#Calculate median of the latitude and longitude values
+center_lon = median(bat_1997$longitude)
+center_lat = median(bat_1997$latitude)
+
+#Create a leaflet map and add circle markers for each location which is sized based on fatalities 
+leaflet(bat_1997) %>% addTiles() %>%
+  addCircleMarkers(
+    lng = ~ longitude,
+    lat = ~ latitude,
+    radius = ~ (fatalities / 5),
+    color = "green",
+    fillOpacity = 0.5,
+    stroke = FALSE,
+    
+#Display the region name and number of fatalities on each circle marker
+    popup = ~ paste("Region: ", location, "<br> Fatalities: ", fatalities)
+  ) %>%
+  
+#Displaying the  map
+  setView(lng = center_lon, lat = center_lat, zoom = 5)
+```
+
+## Protests 
+
+### Protest and fatalities by year
+
+Similar to battles, there is an upward trend in protests during 2011-2022 when compared to 1997-2010.But unlike battles, the fatalities are almost nil during both time periods indicating protests happens in a very controlled manner.
+
+```{r protest_97,fig.height=12, fig.width=12}
+
+#Filter protests for the year from 1997-2010
+pro_data1 <- df %>%
+  filter(event_type == "Protests" & year >= 1997 & year <= 2010) %>%
+  group_by(year) %>%
+  summarise(total_fatalities = sum(fatalities),
+            total_protests = n())
+
+# Creating barchar and linechart 
+p <- ggplot(pro_data1)  +
+  geom_bar(aes(x = year, y = total_protests),
+           stat = "identity",
+           fill = "#87CEEB") +
+  geom_line(aes(x = year, y = total_fatalities),
+            color = "#1E90FF",
+            size = 0.5) +
+  geom_point(aes(x = year, y = total_protests),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  labs(title = "Number of Protests and Fatalities by Year (1997-2010)",
+       x = "Year", y = "Number of Protests and Fatalities",caption ="Source:ACLED_DRC") +
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+# Convert plot to interactive format
+ggplotly(p, tooltip = c("total_protests", "total_fatalities"))
+
+```
+
+
+```{r protest_10,fig.height=12, fig.width=12}
+
+# Filter protests for year 2010 to 2022
+pro_data2 <- df %>%
+  filter(event_type == "Protests" & year >= 2010 & year <= 2022) %>%
+#Group by year and calculate total fatalities and protests
+  group_by(year) %>%
+  summarise(total_fatalities = sum(fatalities),
+            total_protests = n())
+
+# Create barchart and linechart
+p <- ggplot(pro_data2)  +
+  geom_bar(aes(x = year, y = total_protests),
+           stat = "identity",
+           fill = "#87CEEB") +
+  geom_line(aes(x = year, y = total_fatalities),
+            color = "#1E90FF",
+            size = 0.5) +
+  geom_point(aes(x = year, y = total_protests),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  labs(title = "Number of Protests and Fatalities by Year (1997-2010)",
+       x = "Year", y = "Number of Protests and Fatalities",caption ="Source:ACLED_DRC") +
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+# Convert plot to interactive format
+ggplotly(p, tooltip = c("total_protests", "total_fatalities"))
+
+```
+
+### Protest fatalities plotted by regions
+
+As for the regions, Eastern DRC is the most affected similar to battles. During 1997-2010, the number of protests and fatalities are very less as we can see in the map. But during 2010-2022, we can see that the number of protests and fatalities have grown exponentially, especially across these regions Kinshasa, Minembwe and kisankala.
+
+```{r protest_map_97,fig.height=12, fig.width=12}
+#Set keyword to protest
+keyword = "Protests"
+
+#Select required columns 
+protests_97 <- df %>%
+  select(event_type, latitude, longitude, fatalities, year, location) %>%
+#Filter latitude and longitude without NA values 
+  filter(!is.na(latitude)) %>%
+  filter(!is.na(longitude)) %>%
+  filter(str_detect(event_type, keyword)) %>%
+  
+#Filter year less than or equal to 2010
+  filter(as.integer(year) <= 2010)
+
+#Calculate the median longitude and latitude
+center_lon = median(protests_97$longitude)
+center_lat = median(protests_97$latitude)
+
+#Create a leaflet map and add circle markers for each location which is sized based on fatalities
+leaflet(protests_97) %>% addTiles() %>%
+  addCircleMarkers(
+    lng = ~ longitude,
+    lat = ~ latitude,
+    radius = ~ (fatalities * 10),
+    color = "blue",
+    fillOpacity = 0.5,
+    stroke = FALSE,
+    popup = ~ paste("Region: ", location, "<br> Fatalities: ", fatalities)
+  ) %>%
+  
+  # displaying the map
+  setView(lng = center_lon, lat = center_lat, zoom = 5)
+```
+
+
+```{r protest_map_10,fig.height=12, fig.width=12}
+
+#Set keyword to protest
+keyword = "Protests"
+
+#Select required columns
+protests_10 <- df %>%
+  select(event_type, latitude, longitude, fatalities, year, location) %>%
+  
+#Filter latitude and longitude without NA values 
+  filter(!is.na(latitude)) %>%
+  filter(!is.na(longitude)) %>%
+  filter(str_detect(event_type, keyword)) %>%
+  
+#Filter year greater than or equal to 2010
+  filter(as.integer(year) >= 2010)
+
+
+#Calculate the median longitude and latitude
+center_lon = median(protests_10$longitude)
+center_lat = median(protests_10$latitude)
+
+#Create a leaflet map and add circle markers for each location which is sized based on fatalities
+leaflet(protests_10) %>% addTiles() %>%
+  addCircleMarkers(
+    lng = ~ longitude,
+    lat = ~ latitude,
+    radius = ~ (fatalities * 5),
+    color = "blue",
+    fillOpacity = 0.5,
+    stroke = FALSE,
+    popup = ~ paste("Region: ", location, "<br> Fatalities: ", fatalities)
+  ) %>%
+  
+  # displaying the map
+  setView(lng = center_lon, lat = center_lat, zoom = 5)
+```
+
+## Riots
+
+### Riots and fatalities by year
+
+When comparing the two time periods, riots show a completely opposite pattern. Except for 2001, when there were 20 riots and 800 deaths, there was a flat trend from 1997 to 2010. However, from 2010 to 2022, the number of riots has skyrocketed, as has the number of fatalities.
+
+```{r riots_97,fig.height=12, fig.width=12}
+
+#Filter Riots for the year from 1997-2010
+riots_data1 <- df %>%
+  filter(event_type == "Riots" & year >= 1997 & year <= 2010) %>%
+  
+#Group by year and calculate total fatalities and riots
+  group_by(year) %>%
+  summarise(total_fatalities = sum(fatalities),
+            total_riots = n())
+
+# Creating barchar and linechart 
+p <- ggplot(riots_data1)  +
+  geom_bar(aes(x = year, y = total_riots),
+           stat = "identity",
+           fill = "#87CEEB") +
+  geom_line(
+    aes(x = year, y = total_fatalities),
+    stat = "identity",
+    color = "#1E90FF",
+    size = 0.5
+  ) +
+  labs(title = "Number of riots and Fatalities by Year (1997-2010)",
+       x = "Year", y = "Number of riots and Fatalities",caption ="Source:ACLED_DRC") +
+  geom_point(aes(x = year, y = total_riots),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+# Convert plot to interactive format 
+ggplotly(p, tooltip = c("total_riots", "total_fatalities"))
+
+```
+
+
+```{r riots_10,fig.height=12, fig.width=12}
+
+#Filter Riots for the year from 2010-2022
+riots_data2 <- df %>%
+  filter(event_type == "Riots" & year >= 2010 & year <= 2022) %>%
+  
+#Group by year and calculate total fatalities and riots
+  group_by(year) %>%
+  summarise(total_fatalities = sum(fatalities),
+            total_riots = n())
+
+# Creating barchar and linechart
+p <- ggplot(riots_data2)  +
+  geom_bar(aes(x = year, y = total_riots),
+           stat = "identity",
+           fill = "#87CEEB") +
+  geom_line(
+    aes(x = year, y = total_fatalities),
+    stat = "identity",
+    color = "#1E90FF",
+    size = 0.5
+  ) +
+  labs(title = "Number of riots and Fatalities by Year (2010-2022)",
+       x = "Year", y = "Number of riots and Fatalities",caption ="Source:ACLED_DRC") +
+  geom_point(aes(x = year, y = total_riots),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+# Convert plot to interactive format
+ggplotly(p, tooltip = c("total_riots", "total_fatalities"))
+
+```
+
+### Riot fatalities plotted by regions 
+
+As expected, Riots doesnt have mych plots in 1997-2010 map where as 2010-2022 seems cluttered . Once again its the Eastren DRC that is most affected, with top regions being Kamanyola and Kanshasa.
+
+```{r riots_map_97,fig.height=12, fig.width=12}
+
+#Set keywords to Riots
+keyword = "Riots"
+
+#Select required columns
+riots_97 <- df %>%
+  select(event_type, latitude, longitude, fatalities, year, location) %>%
+  
+#Filter latitude and longitude without NA values   
+  filter(!is.na(latitude)) %>%
+  filter(!is.na(longitude)) %>%
+  filter(str_detect(event_type, keyword)) %>%
+  filter(as.integer(year) <= 2010)
+
+#Calculate the median longitude and latitude
+center_lon = median(riots_97$longitude)
+center_lat = median(riots_97$latitude)
+
+#Create a leaflet map and add circle markers for each location which is sized based on fatalities
+leaflet(riots_97) %>% addTiles() %>%
+  addCircleMarkers(
+    lng = ~ longitude,
+    lat = ~ latitude,
+    radius = ~ (fatalities / 2),
+    color = "red",
+    fillOpacity = 0.5,
+    stroke = FALSE,
+    popup = ~ paste("Region: ", location, "<br> Fatalities: ", fatalities)
+  ) %>%
+  
+  #Display map
+  setView(lng = center_lon, lat = center_lat, zoom = 5)
+```
+
+
+```{r riots_map_10,fig.height=12, fig.width=12}
+
+#Set keywords to Riots
+keyword = "Riots"
+
+#Select required columns
+riots_10 <- df %>%
+  select(event_type, latitude, longitude, fatalities, year, location) %>%
+  
+#Filter latitude and longitude without NA values   
+  filter(!is.na(latitude)) %>%
+  filter(!is.na(longitude)) %>%
+  filter(str_detect(event_type, keyword)) %>%
+  filter(as.integer(year) >= 2010)
+
+#Calculate the median longitude and latitude
+center_lon = median(riots_10$longitude)
+center_lat = median(riots_10$latitude)
+
+#Create a leaflet map and add circle markers for each location which is sized based on fatalities
+leaflet(riots_10) %>% addTiles() %>%
+  addCircleMarkers(
+    lng = ~ longitude,
+    lat = ~ latitude,
+    radius = ~ (fatalities / 2),
+    color = "red",
+    fillOpacity = 0.5,
+    stroke = FALSE,
+    popup = ~ paste("Region: ", location, "<br> Fatalities: ", fatalities)
+  ) %>%
+  
+#Display map
+  setView(lng = center_lon, lat = center_lat, zoom = 5)
+
+```
+
+## Explosion/Remote violence
+
+### Explosion/Remote violence and fatalities by year
+
+Unlike the previous three events,Explosion/Remote Violence doesn't show entirely contrasting trends between the two time periods. Though there has been general increase in both Explosions/Remote Violence and fatalities during 2011-2022, the trend is not constant.
+
+
+```{r exp_97,fig.height=12, fig.width=12}
+
+#Filter Explosions/Remote violence for the year from 1997-2010
+explot_data1 <- df %>%
+  filter(event_type == "Explosions/Remote violence" &
+           year >= 1997 & year <= 2010) %>%
+  
+#Group by year and calculate total number of fatalities and Explosions/Remote violence
+  group_by(year) %>%
+  summarise(total_fatalities = sum(fatalities),
+            total_explot = n())
+
+p <- ggplot(explot_data1)  +
+  geom_bar(aes(x = year, y = total_explot),
+           stat = "identity",
+           fill = "#87CEEB") +
+  geom_line(
+    aes(x = year, y = total_fatalities),
+    stat = "identity",
+    color = "#1E90FF",
+    size = 0.5
+  ) +
+  labs(title = "Number of Explosions/Remote violence and Fatalities by Year (1997-2010)",
+       x = "Year", y = "Number of Explosions/Remote violence and Fatalities",caption = "Source: ACLED_DRC") +
+  geom_point(aes(x = year, y = total_explot),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+# Convert plot to interactive format
+ggplotly(p, tooltip = c("total_explot", "total_fatalities"))
+
+```
+
+
+```{r exp_10,fig.height=12, fig.width=12}
+
+#Filter Explosions/Remote violence for the year from 2010-2022
+explot_data2 <- df %>%
+  filter(event_type == "Explosions/Remote violence" &
+           year >= 2010 & year <= 2022) %>%
+  
+#Group by year and calculate total number of fatalities and Explosions/Remote violence  
+  group_by(year) %>%
+  summarise(total_fatalities = sum(fatalities),
+            total_explot = n())
+#Create barchart and line chart
+p <- ggplot(explot_data2)  +
+  geom_bar(aes(x = year, y = total_explot),
+           stat = "identity",
+           fill = "#87CEEB") +
+  geom_line(
+    aes(x = year, y = total_fatalities),
+    stat = "identity",
+    color = "#1E90FF",
+    size = 0.5
+  ) +
+  labs(title = "Number of explosions/Remote violence and Fatalities by Year (2010-2022)",
+       x = "Year", y = "Number of xplosions/Remote violence and Fatalities",caption = "Source: ACLED_DRC") +
+  geom_point(aes(x = year, y = total_explot),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+# Convert plot to interactive format
+ggplotly(p, tooltip = c("total_explot", "total_fatalities"))
+
+
+```
+
+### Explosion/Remote violence fatalities plotted by regions
+
+Once common trend across all the events for regions is Eastern DRC. Compared to other regions East is the most impacted. Tanganika,Bobonga and Makanza has most fatalities during 1997-2010 where as Eringeti,Mongbwalu and Goma has most fatalities during 2011-2022.
+
+```{r exp_map_97,fig.height=12, fig.width=12}
+
+#Set keywords to Explosions/Remote violence
+keyword = "Explosions/Remote violence"
+
+#Select required columns
+er_vio_97 <- df %>%
+  select(event_type, latitude, longitude, fatalities, year, location) %>%
+  
+#Filter latitude and longitude without NA values  
+  filter(!is.na(latitude)) %>%
+  filter(!is.na(longitude)) %>%
+  filter(str_detect(event_type, keyword)) %>%
+  filter(as.integer(year) <= 2010)
+
+#Calculate the median longitude and latitude
+center_lon = median(er_vio_97$longitude)
+center_lat = median(er_vio_97$latitude)
+
+#Create a leaflet map and add circle markers for each location which is sized based on fatalities
+leaflet(er_vio_97) %>% addTiles() %>%
+  addCircleMarkers(
+    lng = ~ longitude,
+    lat = ~ latitude,
+    radius = ~ (fatalities / 10),
+    color = "blue",
+    fillOpacity = 0.5,
+    stroke = FALSE,
+    popup = ~ paste("Region: ", location, "<br> Fatalities: ", fatalities)
+  ) %>%
+  
+ #Display map 
+  setView(lng = center_lon, lat = center_lat, zoom = 5)
+
+```
+
+
+```{r exp_map_10,fig.height=12, fig.width=12}
+
+#Set keywords to Explosions/Remote violence
+keyword = "Explosions/Remote violence"
+
+#Select required columns
+er_vio_10 <- df %>%
+  select(event_type, latitude, longitude, fatalities, year, location) %>%
+
+#Filter latitude and longitude without NA values     
+  filter(!is.na(latitude)) %>%
+  filter(!is.na(longitude)) %>%
+  filter(str_detect(event_type, keyword)) %>%
+  filter(as.integer(year) >= 2010)
+
+#Calculate the median longitude and latitude
+center_lon = median(er_vio_10$longitude)
+center_lat = median(er_vio_10$latitude)
+
+#Create a leaflet map and add circle markers for each location which is sized based on fatalities
+leaflet(er_vio_10) %>% addTiles() %>%
+  addCircleMarkers(
+    lng = ~ longitude,
+    lat = ~ latitude,
+    radius = ~ (fatalities / 1),
+    color = "blue",
+    fillOpacity = 0.5,
+    stroke = FALSE,
+    popup = ~ paste("Region: ", location, "<br> Fatalities: ", fatalities)
+  ) %>%
+  
+  #Display map
+  setView(lng = center_lon, lat = center_lat, zoom = 5)
+```
+
+## Violence against civilians 
+
+### Violence against civilians and fatalities by year
+
+Violence as we have seen above is the most prominent of events. As expected,1997-2010 has a considerable number of fatalities but less events . Where as after 2010, number of events and fatalities has grown by 4X.
+
+```{r civil_97,fig.height=12, fig.width=12}
+
+#Filter Violence against civilians for the year from 1997-2010
+civil_data1 <- df %>%
+  filter(event_type == "Violence against civilians" &
+           year >= 1997 & year <= 2010) %>%
+  
+#Group by year and calculate total number of fatalities and Violence against civilians
+  group_by(year) %>%
+  summarise(total_fatalities = sum(fatalities),
+            total_civil = n())
+
+#Create barchart and line chart
+p <- ggplot(civil_data1)  +
+  geom_bar(aes(x = year, y = total_civil),
+           stat = "identity",
+           fill = "#87CEEB") +
+  geom_line(
+    aes(x = year, y = total_fatalities),
+    stat = "identity",
+    color = "#1E90FF",
+    size = 0.5
+  ) +
+  labs(title = "Number of Violence against civilians and Fatalities by Year (1997-2010)",
+       x = "Year", y = "Number of Violence against civilians and Fatalities",caption = "Source: ACLED_DRC") +
+  geom_point(aes(x = year, y = total_civil),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+# Convert plot to interactive format
+ggplotly(p, tooltip = c("total_civil", "total_fatalities"))
+
+```
+
+
+```{r civil_10,fig.height=12, fig.width=12}
+
+#Filter Violence against civilians for the year from 2010-2022
+civil_data2 <- df %>%
+  filter(event_type == "Violence against civilians" &
+           year >= 2010 & year <= 2022) %>%
+  
+#Group by year and calculate total number of fatalities and Violence against civilians
+  group_by(year) %>%
+  summarise(total_fatalities = sum(fatalities),
+            total_civil = n())
+
+#Create barchart and line chart
+p <- ggplot(civil_data2)  +
+  geom_bar(aes(x = year, y = total_civil),
+           stat = "identity",
+           fill = "#87CEEB") +
+  geom_line(
+    aes(x = year, y = total_fatalities),
+    stat = "identity",
+    color = "#1E90FF",
+    size = 0.5
+  ) +
+  labs(title = "Number of Violence against civilians and Fatalities by Year (2010-2022)",
+       x = "Year", y = "Number of Violence against civilians and Fatalities",caption = "Source: ACLED_DRC") +
+  geom_point(aes(x = year, y = total_civil),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+# Convert plot to interactive format
+ggplotly(p, tooltip = c("total_civil", "total_fatalities"))
+
+
+```
+
+### Violence against civilians fatalities plotted by regions
+
+Violence spread is more distributed compared to other events. Eastern DRC has more events where as other regions has high fatalities per region.Uvira,Kinshasa,Djugu,Bongende are some of the most impacted regions across both the time periods.
+
+```{r civil_map_97,fig.height=12, fig.width=12}
+
+#Set keywords to Violence against civilians
+keyword = "Violence against civilians"
+
+#Select required columns
+Vio_Civ_1997 <- df %>%
+  select(event_type, latitude, longitude, fatalities, year,location) %>%
+  
+#Filter latitude and longitude without NA values   
+  filter(!is.na(latitude)) %>%
+  filter(!is.na(longitude)) %>%
+  filter(str_detect(event_type, keyword)) %>%
+  filter(as.integer(year) <= 2010)
+
+#Calculate the median longitude and latitude
+center_lon = median(Vio_Civ_1997$longitude)
+center_lat = median(Vio_Civ_1997$latitude)
+
+#Create a leaflet map and add circle markers for each location which is sized based on fatalities
+leaflet(Vio_Civ_1997) %>% addTiles() %>%
+  addCircleMarkers(
+    lng = ~ longitude,
+    lat = ~ latitude,
+    radius = ~ (fatalities / 15),
+    color = "blue",
+    fillOpacity = 0.5,
+    stroke = FALSE,
+    popup = ~ paste("Region: ", location, "<br> Fatalities: ", fatalities)
+  )  %>%
+  
+  #Display map
+  setView(lng = center_lon, lat = center_lat, zoom = 5)
+
+```
+
+
+```{r civil_map_10,fig.height=12, fig.width=12}
+
+#Set keywords to Violence against civilians
+keyword <- "Violence against civilians"
+
+#Select required columns
+Vio_Civ_2010 <- df %>%
+  select(event_type, latitude, longitude, fatalities, year,location) %>%
+  
+#Filter latitude and longitude without NA values   
+  filter(!is.na(latitude)) %>%
+  filter(!is.na(longitude)) %>%
+  filter(str_detect(event_type, keyword)) %>%
+  filter(as.integer(year) >= 2010) %>%
+  filter(fatalities > 0)
+
+#Calculate the median longitude and latitude
+center_lon <- median(Vio_Civ_2010$longitude)
+center_lat <- median(Vio_Civ_2010$latitude)
+
+#Create a leaflet map and add circle markers for each location which is sized based on fatalities
+leaflet(Vio_Civ_2010) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    lng = ~ longitude,
+    lat = ~ latitude,
+    radius = ~ (fatalities / 15),
+    color = "blue",
+    fillOpacity = 0.5,
+    stroke = FALSE,
+    popup = ~ paste("Region: ", location, "<br> Fatalities: ", fatalities)
+  )  %>%
+  
+  #Display map 
+  setView(lng = center_lon, lat = center_lat, zoom = 5)
+
+
+
+```
+
+## Strategic developments
+
+### Strategic developments and fatalities by year
+
+We can see for 1997-2010, startegic developments initiatives were actively done and as expected fatalities over both the time periods are nil as strategic developments are highly controlled and regulated.But we can see an upward trend post 2010 indicating the need for initiatives to compensate the impact caused by the above events.
+
+```{r sd_97,fig.height=12, fig.width=12}
+
+#Filter Strategic developments for the year from 1997-2010
+sdev_data1 <- df %>%
+  filter(event_type == "Strategic developments" &
+           year >= 1997 & year <= 2010) %>%
+  
+#Group by year and calculate total number of fatalities and Strategic developments  
+  group_by(year) %>%
+  summarise(total_fatalities = sum(fatalities),
+            total_sdev = n())
+
+#Create barchart and line chart
+p <- ggplot(sdev_data1)  +
+  geom_bar(aes(x = year, y = total_sdev),
+           stat = "identity",
+           fill = "#87CEEB") +
+  geom_line(
+    aes(x = year, y = total_fatalities),
+    stat = "identity",
+    color = "#1E90FF",
+    size = 0.5
+  ) +
+  labs(title = "Number of Strategic developments and Fatalities by Year (1997-2010)",
+       x = "Year", y = "Number of Strategic developments and Fatalities",caption = "Source: ACLED_DRC") +
+  geom_point(aes(x = year, y = total_sdev),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+# Convert plot to interactive format
+ggplotly(p, tooltip = c("total_sdev", "total_fatalities"))
+
+```
+
+
+```{r sd_10,fig.height=12, fig.width=12}
+
+#Filter Strategic developments for the year from 2010-2022
+sdev_data2 <- df %>%
+  filter(event_type == "Strategic developments" &
+           year >= 2010 & year <= 2022) %>%
+#Group by year and calculate total number of fatalities and Strategic developments   
+  group_by(year) %>%
+  summarise(total_fatalities = sum(fatalities),
+            total_sdev = n())
+
+#Create barchart and line chart
+p <- ggplot(sdev_data2)  +
+  geom_bar(aes(x = year, y = total_sdev),
+           stat = "identity",
+           fill = "#87CEEB") +
+  geom_line(
+    aes(x = year, y = total_fatalities),
+    stat = "identity",
+    color = "#1E90FF",
+    size = 0.5
+  ) +
+  labs(title = "Number of Strategic developments and Fatalities by Year (2010-2022)",
+       x = "Year", y = "Number of Strategic developments and Fatalities",caption = "Source: ACLED_DRC") +
+  geom_point(aes(x = year, y = total_sdev),
+             size = 1,
+             color = "black") +
+  geom_point(aes(x = year, y = total_fatalities),
+             size = 1,
+             color = "black") +
+  theme_bw() +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        plot.title = element_text(size = 14,hjust = 0.5))
+
+# Convert plot to interactive format
+ggplotly(p, tooltip = c("total_sdev", "total_fatalities"))
+
+
+```
+
+
+### Strategic developments fatalities plotted by regions
+
+We can see that the spread was relatively even between 1997 and 2010. However, after 2010, we can see a significant number of strategic development initiatives centered on Eastern DRC. This could be because Eastern DRC has been hit the hardest by the aforementioned events, particularly since 2010, and thus a large number of development initiatives have been planned for the region.
+
+```{r sd_map_97,fig.height=12, fig.width=12}
+
+#Set keywords to Strategic developments
+keyword = "Strategic developments"
+
+#Select required columns
+sd_97 <- df %>%
+  select(event_type, latitude, longitude, fatalities, year, location) %>%
+  
+#Filter latitude and longitude without NA values   
+  filter(!is.na(latitude)) %>%
+  filter(!is.na(longitude)) %>%
+  filter(str_detect(event_type, keyword)) %>%
+  filter(as.integer(year) <= 2010)
+
+#Calculate the median longitude and latitude
+center_lon = median(sd_97$longitude)
+center_lat = median(sd_97$latitude)
+
+#Create a leaflet map and add circle markers for each location which is sized based on fatalities
+leaflet(sd_97) %>% addTiles() %>%
+  addCircleMarkers(
+    lng = ~ longitude,
+    lat = ~ latitude,
+    radius = ~ (fatalities * 100),
+    color = "red",
+    fillOpacity = 0.5,
+    stroke = FALSE,
+    popup = ~ paste("Region: ", location, "<br> Fatalities: ", fatalities)
+  ) %>%
+  
+  #Display map
+  setView(lng = center_lon, lat = center_lat, zoom = 5)
+```
+
+
+```{r sd_map_10,fig.height=12, fig.width=12}
+
+#Set keywords to Strategic developments
+keyword = "Strategic developments"
+
+#Select required columns
+sd_2010 <- df %>%
+  select(event_type, latitude, longitude, fatalities, year, location) %>%
+
+#Filter latitude and longitude without NA values   
+  filter(!is.na(latitude)) %>%
+  filter(!is.na(longitude)) %>%
+  filter(str_detect(event_type, keyword)) %>%
+  filter(as.integer(year) >= 2010)
+
+#Calculate the median longitude and latitude
+center_lon = median(sd_2010$longitude)
+center_lat = median(sd_2010$latitude)
+
+#Create a leaflet map and add circle markers for each location which is sized based on fatalities
+leaflet(sd_2010) %>% addTiles() %>%
+  addCircleMarkers(
+    lng = ~ longitude,
+    lat = ~ latitude,
+    radius = ~ (fatalities * 10),
+    color = "red",
+    fillOpacity = 0.5,
+    stroke = FALSE,
+    popup = ~ paste("Region: ", location, "<br> Fatalities: ", fatalities)
+  ) %>%
+  
+  #Display map
+  setView(lng = center_lon, lat = center_lat, zoom = 5)
+
+```
+
+## Mining locations in Congo
+
+Here we have gathered a mining location dataset from The Humanitarian Data Exchange and plotted using google map. As expected most of the mining locations are around the Eastern and Southern Regions of DRC.
+
+```{r mining_locations,fig.height=12, fig.width=12}
+
+register_google(key = "AIzaSyC9Sl1pldRzCmpezaKi-F9E8HqdlzRzBKk")
+
+# Load the mining location data from CSV file
+mining_data <- read.csv("new_try.csv", header = TRUE)
+
+# Set the center coordinates and zoom level of the map
+congo_center <- c(23.658073,-8.702662)
+zoom <- 5
+
+# Get the Google Map using ggmap
+congo_map <- get_googlemap(center = congo_center, zoom = zoom)
+
+# Create a ggmap object
+ggmap(congo_map) +
+  
+  # Add the mining locations as points on the map
+  geom_point(
+    data = mining_data,
+    aes(x = lon, y = lat),
+    size = 3,
+    color = "red"
+  ) +
+  
+  # Add a title to the plot
+  ggtitle("Mining Locations in Congo") 
+
+```
+
+
+
+## EV Sales 
+
+### Top 10 EV sales regions by Year
+
+As a next step, we attempt to analyze EV sales data to identify the global growth of EV sales in order to determine the relationship between events in Congo and EV sales. As seen in the preceding analysis, we see an upward trend across all events and an increasing number of fatalities after 2010. So we're looking for the EV sales trend after 2010. Here, we can see that EV sales have been increasing globally since 2010. China, Germany, and the United States respectively are the countries with the most EV sales during this time period.
+
+
+```{r ev_sales,fig.height=12, fig.width=12}
+#Subset historical and EV Sales 
+ev_clean <- subset(df.ev, category == "Historical" & parameter == "EV sales")
+
+#Group by year,region , parameter and calculate TotalSales 
+cf1 = ev_clean%>%
+  group_by(year,region,parameter) %>%
+  summarise(
+            TotalSales = sum(value))  %>%
+  arrange(year)
+
+# Group by region and calculate total vale of total_sales 
+top_regions <- cf1 %>%
+  group_by(region) %>%
+  summarise(total_sales = sum(TotalSales)) %>%
+  
+#read top 10 sales
+  top_n(10, total_sales) %>%
+  select(region)
+
+regions <- cf1 %>%
+  filter(region %in% top_regions$region) %>%
+  select(region, year, TotalSales)
+
+#Convert TotalSales into numeric data 
+regions$TotalSales <- as.numeric(as.character(regions$TotalSales), scientific = FALSE)
+
+
+#Create line chart 
+p <-
+  ggplot(regions, aes(x = year, y = TotalSales, color = region)) +
+  geom_line() +
+  facet_wrap( ~ region,
+              ncol = 2,
+              labeller = as_labeller(function(x)
+                str_wrap(x, width = 20))) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    x = "Year",
+    y = "Total Sales",
+    title = "Top 10 EV Sales by Countries by Year",
+    subtitle = "Year:2010-2021",
+    caption = "Source:IEA_EV",
+    fill = "Regions"
+  ) +
+  theme_bw() + theme(plot.title = element_text(size = 14,hjust = 0.5),
+                     plot.subtitle = element_text(size = 12,hjust=0.5))
+
+# Color palette
+p + scale_color_manual(
+  values = c(
+    "#00AFBB",
+             "#E7B800",
+             "#FC4E07",
+             "#0080FF",
+             "#B24700",
+             "#009E73",
+             "#6600CC",
+             "#F0E442",
+             "#D55E00",
+             "#CC79A7"
+  
+  )
+)
+
+```
+
+
+### Top 10 EV stock sales across countries by year
+
+Next up we analyse the EV stock sales and we see a similar trend as EV sales with a consistently increasing trend across the world. China, Netherlands and Norway are the countries with the highest stcok sales during 2010-2020.
+
+```{r top_stocksales,fig.height=12, fig.width=12}
+
+#Subset historical and EV stock share
+ev_clean <-
+  subset(df.ev, category == "Historical" &
+           parameter == "EV stock share")
+
+#Group by year,region , parameter and calculate TotalSales 
+cf1 = ev_clean %>%
+  group_by(year, region, parameter) %>%
+  summarise(TotalStockshares = sum(value))  %>%
+  arrange(year)
+
+# Group by region and calculate total vale of total_sales 
+top_regions <- cf1 %>%
+  group_by(region) %>%
+  summarise(total_sales = sum(TotalStockshares)) %>%
+  
+#Read top 10 stock share   
+  top_n(10, total_sales) %>%
+  select(region)
+
+regions <- cf1 %>%
+  filter(region %in% top_regions$region) %>%
+  select(region, year, TotalStockshares)
+
+#Convert TotalSales into numeric data 
+regions$TotalStockshares <-
+  as.numeric(as.character(regions$TotalStockshares), scientific = FALSE)
+
+
+# Creatw linechart
+p <-
+  ggplot(regions, aes(x = year, y = TotalStockshares, color = region)) +
+  geom_line() +
+  facet_wrap(~ region,
+             ncol = 2,
+             labeller = as_labeller(function(x)
+               str_wrap(x, width = 20))) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    x = "Year",
+    y = "Total stock shares",
+    title = "Top 10 EV stock sales Regions by Year",
+    subtitle = "Year:2010-2021",
+   caption = "Source:IEA_EV",
+    fill = "Regions"
+  ) +
+  theme_bw() + theme(plot.title = element_text(size = 14,hjust=0.5),
+                     plot.subtitle = element_text(size = 12,hjust=0.5))
+
+# Color palette
+p + scale_color_manual(
+  values = c(
+    "#00AFBB",
+             "#E7B800",
+             "#FC4E07",
+             "#0080FF",
+             "#B24700",
+             "#009E73",
+             "#6600CC",
+             "#F0E442",
+             "#D55E00",
+             "#CC79A7"
+  )
+)
+
+```
+
+### EV sales by mode of vehciles across the world 
+
+Here we plot the sales of EV by different modes of vehicles, that is buses, cars, trucks and vans. As expected, cars are the most popular form of EV and the sales has been sky rocketing since 2010s compared to other modes which are mostly flat.
+
+```{r ev_world,fig.height=10, fig.width=10}
+
+#Subset historical, EV sales,World
+ev_clean <-
+  subset(df.ev,
+         category == "Historical" &
+           parameter == "EV sales" & region == "World")
+
+#Group by region,year,mode,parameter and calculate TotalSales and arrange by year
+cf1 = ev_clean %>%
+  group_by(region, year, mode, parameter) %>%
+  summarise(TotalSales = sum(value))  %>%
+  arrange(year)
+#Select region,year,mode,parameter,TotalSales
+regions <- cf1 %>%
+  select(region, year, mode, parameter, TotalSales)
+#Convert TotalSales into numeric value
+regions$TotalSales <-
+  as.numeric(as.character(regions$TotalSales), scientific = FALSE)
+
+#Create plot 
+p <- ggplot(regions, aes(x = year, y = TotalSales, color = mode)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap( ~ mode,
+              ncol = 2,
+              labeller = as_labeller(function(x)
+                str_wrap(x, width = 20))) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    x = "Year",
+    y = "Total Sales",
+    title = "Sales breakdown by Modes of Vehicles",
+    subtitle = "Year:2010-2021",
+    caption = "Source:IEA_EV"
+  ) +
+  theme_bw() +
+  theme(plot.title = element_text(size = 14,hjust=0.5),
+        plot.subtitle = element_text(size = 12,hjust=0.5))
+
+
+# Color palette
+p + scale_color_manual(values = c("#00AFBB", "#E7B800", "#FC4E07", "#0080FF"))
+
+```
+
+### Merged Datasets
+
+In order to get a more clearer picture. we have joined both the DRC data and EV sales data and tried to analyse in unity.
+
+### Establish corelation between EV sales and conflicts in DRC
+
+We have plotted a combination chart to analyse yearly EV sales and DRC events from 2010. As expected , EV sales has been growing since 2010 (seen in black line) and the corresponding events also see an upward trend from 2010 (seen in bar charts). Violence against the civilians and Battles are the top two events across 2010-2022. 
+
+
+```{r ev_salesvs_events, fig.height=8, fig.width=8}
+
+#Subset historical, EV sales,World
+ev_clean <-
+  subset(df.ev,
+         category == "Historical" &
+           parameter == "EV sales" & region == "World")
+
+# Group by year and event_type and count the number of occurrences of events 
+df_grouped <- df %>%
+  group_by(year, event_type) %>%
+  summarise(count = n())
+
+# Convert to individual columns
+df_org <- df_grouped %>%
+  pivot_wider(names_from = event_type, values_from = count)
+
+ev_clean <-
+  subset(df.ev, category == "Historical" & parameter == "EV sales")
+
+# Group by year and event_type and count the number of occurrences and calculate the total sales 
+df_grouped_ev <- ev_clean %>%
+  group_by(year, unit) %>%
+  summarise(total_sales = sum(value))
+
+# Join df_wide and df_grouped_ev by year
+df_join <- df_org %>%
+  left_join(df_grouped_ev, by = "year")
+
+df_join <- subset(df_join, year >= 2010 & year <= 2021)
+df_join <-
+  df_join %>% rename(Strategic_developments = 'Strategic developments')
+df_join <-
+  df_join %>% rename(Violence_against_civilians = 'Violence against civilians')
+df_join <-
+  df_join %>% rename(Explosions_Remote_violence = 'Explosions/Remote violence')
+
+
+
+# Set the plot theme
+theme_set(theme_minimal())
+
+# Creating the plot
+ggplot(df_join, aes(x = year)) +
+  
+  # Add the bar chart with fill by different column values
+  geom_bar(aes(y = Battles, fill = "Battles"),
+           stat = "identity",
+           position = "dodge") +
+  geom_bar(aes(y = Protests, fill = "Protests"),
+           stat = "identity",
+           position = "dodge") +
+  geom_bar(aes(y = Riots, fill = "Riots"),
+           stat = "identity",
+           position = "dodge") +
+  geom_bar(
+    aes(y = Strategic_developments, fill = "Strategic_developments"),
+    stat = "identity",
+    position = "dodge"
+  ) +
+  geom_bar(
+    aes(y = Violence_against_civilians, fill = "Violence_against_civilians"),
+    stat = "identity",
+    position = "dodge"
+  ) +
+  geom_bar(
+    aes(y = Explosions_Remote_violence, fill = "Explosions_Remote_violence"),
+    stat = "identity",
+    position = "dodge"
+  ) +
+  
+  # Create line chart with total sales on the secondary Y axis
+  geom_line(aes(y = total_sales / 10000, group = 1),
+            linewidth = 1,
+            color = "black") +
+  scale_y_continuous(sec.axis = sec_axis( ~ ., name = "Total Sales in 10000s")) +
+  
+  # Add plot labels 
+  labs(
+    title = "Co-relation:EV sales and conflicts",
+    x = "Year",
+    y = "Number of conflicts",
+    fill = "Event types",
+    subtitle = "Year:2010-2021",
+    caption = "Source:IEA_EV & ACLED_DRC"
+  ) +
+  theme(legend.position = "bottom") + scale_fill_brewer(palette = "Reds", name = " Events") +
+    theme(plot.title = element_text(size = 14,hjust=0.5),
+        plot.subtitle = element_text(size = 12,hjust=0.5))
+ 
+```
+
+
+Report
+
+Introduction
+
+Growth of EV
+In recent years, the growth of electric vehicles (EVs) has been a significant trend in the automotive industry. EVs' global market share has grown significantly over the last decade and is expected to grow further in the coming years. Electric vehicle (EV) sales more than doubled from the previous year in 2021, reaching a new high of 6.6 million. In 2012, only 120 000 electric vehicles were sold worldwide. In 2021, more than that many are sold each week. This increased the total number of electric vehicles on the world's roads to approximately 16.5 million, more than tripling the number in 2018. Global sales of electric vehicles continued to rise strongly in 2022, with 2 million sold in the first quarter, a 75% increase over the same period in 2021. As the demand for EVs grows, so does the demand for critical minerals like cobalt, which is used in EV batteries. This has raised concerns about the environmental and social consequences of mining these minerals, particularly in countries such as the Democratic Republic of the Congo (DRC), which produces more than 70% of the world's cobalt.
+
+Mining in DRC
+
+Mining is critical to the Democratic Republic of the Congo's (DRC) economy, accounting for approximately 20% of the country's GDP and more than 95% of its export earnings. However, the mining industry has been linked to a number of socioeconomic issues, including poverty, unemployment, corruption, and conflict. Exploitation of the country's rich mineral resources, such as cobalt and copper, has contributed to conflicts and human rights violations, particularly in the country's eastern region. This has had a negative impact on the local population's standard of living .The exploitation of natural resources in the DRC has been characterized by corruption, lack of transparency, and illegal activities. Despite these challenges, the Democratic Republic of the Congo (DRC) remains a major player in the global mining industry due to its vast mineral reserves.
+
+Analysis and Findings
+
+For the purpose of analysis , we have split our data across two time periods 1997-2010 & 2010-2022 as the growth of EV started getting steam around 2010. Then for the two time periods we have analysed the various event types in depth. We have also sourced an external EV data from IEA to find the correlation between the events in DRC and global EV sales. Some of the key findings from our analysis are listed below
+1.	Compared to period 1 ( 1997 -2010 ) , there is a 4X times increase in period 2 ( 2010-2022)
+2.	Absolute number of fatalities in period 1 is higher than period 2 but trend of period 2 is on a upward surge and it may well surpass the peak of period 1
+3.	Eastern DRC is the most impacted region due to conflicts due to its rich cobalt and copper reserves. Some of most affected regions are Kivu, Itari, Goma, Bukavu to name a few are areas which has most events and fatalities
+4.	Violence and battles are the two most common events where as Unidentified armed groups, Military forces and civilians are top actors.
+5.	Violence against civilians, Battles, Protests and Riots are the top events with exponential growth between the time periods both in terms of number of events as well as fatalities
+6.	All the above events are more prominent in Eastern DRC followed by Southern DRC
+7.	Strategic Development events are the most controlled as it has almost nil fatalities across both time periods. Most of the strategic development initiatives are seen around Eastern DRC due to the high nature of conflicts surrounding that region
+8.	EV sales has been on a upward trend from 2010 across the globe , majorly driven by countries such as China, Germany, Norway, Netherlands to name a few.
+9.	The most preferred form of EV is car with the highest growth trend.
+We can see that there is a clear correlation between the raise in conflicts and the growth of EV ( Fig.33) . This is profound in the Eastern DRC which is the major source of cobalt and copper resources which are key components in EV. Extensive mining in these regions have adverse impact on the socio-economic life of the civilians which has resulted in conflicts across the Eastern DRC especially after 2010 after the push for EV due to climate change policies. 
+
+Role of China
+
+The role of China in the DRC's conflict scenario is especially noteworthy, as China is a major player in the country's mining industry, investing heavily in it. Chinese companies have begun to enter the mining business in the last 15 years, buying out North American and European companies to control the majority of cobalt and copper mines in southern DRC. Tenke Fungurume mine (TFM), one of the country's largest industrial mines, is 80% owned by China Molybdenum (CMOC). China's involvement in the DRC's mining industry has both positive and negative implications for the country's conflict scenario.
+
+Conclusion
+
+ According to the World Bank, demand for cobalt production will increase by 585% by 2050. This surge in cobalt demand, fuelled by the growth of EVs, combined with the role of armed groups and exploitation by MNCs, has contributed to the DRC's conflict scenario, particularly in the Eastern DRC. Furthermore, cobalt mining in the DRC has had a significant impact on the local environment, resulting in negative effects on local communities' health and livelihoods. This, in turn, has resulted in an exponential increase in conflicts in the DRC, particularly since 2010, as civilians' socioeconomic lives have become unsettled. With rising global EV adoption and cobalt demand, sustainable and ethical practices in the EV industry and cobalt mining are critical steps toward mitigating the negative impact on the DRC.
